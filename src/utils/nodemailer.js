@@ -6,7 +6,7 @@ const transporter = nodemailer.createTransport({
   secure: false, // STARTTLS requires secure to be false
   auth: {
     user: "Tiwariadarsh@gmail.com",
-    pass: "ofsrekmyfnvadhno",
+    pass: "dqsxfgdoktfmnxci",
   },
 });
 

@@ -24,11 +24,7 @@ profileRouter.patch(
         (key) => (loggedInUser[key] = req.body[key])
       );
 
-      // const optional = {
-      //   folder: "/Raghuveer",
-      //   transformation: [{ width: 1000, height: 1000, crop: "limit" }],
-      //   timeout: 120000, // 60 seconds
-      // };
+      
 
       if (req.file) {
         const res = await cloudinary.uploader.upload(req.file.path);
