@@ -36,7 +36,7 @@ authRouter.post("/signup", async (req, res) => {
     const savedUser = await user.save();
     const token = await savedUser.getJWT();
 
-    main(emailId, otp);
+    await main(emailId, otp);
 
     res.cookie("token", token, {
       expires: new Date(Date.now() + 8 * 3600000), // Set expiration time
@@ -86,7 +86,7 @@ authRouter.post("/login", async (req, res) => {
 
       const updatedUser = await user.save();
 
-      main(emailId, otp);
+      await main(emailId, otp);
 
       res.send({
         message: "Email has been send on you email",
