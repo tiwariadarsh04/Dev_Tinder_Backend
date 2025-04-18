@@ -11,7 +11,7 @@ app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
 
 // CORS setup
-const allowedOrigins = ["http://localhost:3000", ""]; // Add valid origins
+const allowedOrigins = ["http://localhost:3000", "https://devtinder-web-mbq0.onrender.com"]; // Add valid origins
 app.use(
   cors({
     origin: (origin, callback) => {
