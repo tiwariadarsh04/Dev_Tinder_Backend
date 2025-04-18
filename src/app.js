@@ -11,7 +11,7 @@ app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
 
 // CORS setup
-const allowedOrigins = ["http://localhost:3000", "https://devtinder-web-mbq0.onrender.com"]; // Add valid origins
+const allowedOrigins = ["http://localhost:3000", "https://devtinder-web-ncza.onrender.com"]; // Add valid origins
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -53,6 +53,7 @@ connectDB()
     // Start the server after DB is connected
     server.listen(process.env.PORT, () => {
       console.log(`Server is successfully listening on port ${process.env.PORT}`);
+
     });
   })
   .catch((err) => {
