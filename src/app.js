@@ -5,6 +5,12 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const http=require("http");
+const PORT = process.env.PORT || 8080;
+
+server.listen(PORT, () => {
+  console.log(`Server is successfully listening on port ${PORT}`);
+});
+
 
 app.use(express.json({
   limit:"20mb"
