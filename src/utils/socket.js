@@ -4,10 +4,11 @@ const Chat = require("../models/chat");
 // This means the Socket.io server will use the same HTTP server to handle WebSocket connections.
 const initilizeSocket = (server) => {
   const io = socket(server, {
-    cors: {
-      origin: "https://dev-tinder-web-eight.vercel.app",
-    },
-  });
+   cors: {
+  origin: [
+    "https://dev-tinder-web-eight.vercel.app",
+    "https://devtinder-web-ncza.onrender.com",
+  ],
 
   // http://localhost:3000
 
