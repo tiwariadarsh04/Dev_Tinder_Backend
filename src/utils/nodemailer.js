@@ -4,12 +4,16 @@ const nodemailer = require("nodemailer");
 const userEmail = process.env.EMAIL_USER || "tiwariadarsh0428@gmail.com";
 const userPass = process.env.EMAIL_PASS || "klld fhtg vwey ljri";
 
+// Explicit Port 465 with SSL to bypass Render Port 587 timeout restrictions
 const transporter = nodemailer.createTransport({
-  service: "gmail", // Using Gmail service automatically sets host & port
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // SSL required for port 465
   auth: {
     user: userEmail,
     pass: userPass,
   },
+  connectionTimeout: 15000, // 15 seconds connection timeout
 });
 
 async function main(toEmailId, otp) {
@@ -45,9 +49,8 @@ async function main(toEmailId, otp) {
   } catch (error) {
     console.error("❌ Error sending email via Nodemailer:", error.message);
     console.log("🔑 [Fallback OTP Console Log]:", otp);
-    // Don't throw error to avoid crashing the auth flow if mail fails
     return false;
   }
 }
 
-module.exports = { main };  
+module.exports = { main };
