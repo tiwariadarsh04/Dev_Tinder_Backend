@@ -5,25 +5,31 @@ const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const { main } = require("../utils/nodemailer");
 
-// Generate a 6-digit OTP
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
+const COOKIE_OPTIONS = {
+  expires: new Date(Date.now() + 8 * 3600000),
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+};
+
 authRouter.post("/signup", async (req, res) => {
   try {
-    // Validation of data
     validateSignUpData(req);
 
     const { firstName, lastName, emailId, password } = req.body;
 
-    // Encrypt the password
+    const existingUser = await User.findOne({ emailId });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is already registered. Please Sign In." });
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
-    console.log(passwordHash);
-
     const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    //   Creating a new instance of the User model
     const user = new User({
       firstName,
       lastName,
@@ -36,23 +42,24 @@ authRouter.post("/signup", async (req, res) => {
     const savedUser = await user.save();
     const token = await savedUser.getJWT();
 
-    await main(emailId, otp);
+    // Graceful Email sending - does not crash signup if nodemailer fails
+    try {
+      await main(emailId, otp);
+    } catch (mailErr) {
+      console.error("⚠️ Nodemailer Email Failed:", mailErr.message);
+      console.log("🔑 [Fallback OTP]:", otp);
+    }
 
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 8 * 3600000), // Set expiration time
-      httpOnly: true, // Make the cookie inaccessible to JavaScript
-      secure: true, // Send cookie over HTTPS only
-      sameSite: "None", // Allow cross-site requests
-    });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
-    res.json({
-      message: `${firstName} Registered Successfully!!`,
+    res.status(200).json({
+      message: `${firstName} Registered Successfully!`,
       data: savedUser,
     });
   } catch (err) {
-    res.status(400).send({
-      message: "Error in User Registration",
-      error: err,
+    console.error("Signup Error:", err.message);
+    res.status(400).json({
+      error: err.message || "Error in User Registration",
     });
   }
 });
@@ -61,42 +68,45 @@ authRouter.post("/login", async (req, res) => {
   try {
     const { emailId, password } = req.body;
 
-    const user = await User.findOne({ emailId: emailId });
+    if (!emailId || !password) {
+      return res.status(400).json({ error: "Email and Password are required." });
+    }
+
+    const user = await User.findOne({ emailId });
     if (!user) {
-      throw new Error("Invalid credentials");
+      return res.status(400).json({ error: "Invalid credentials" });
     }
 
     const isPasswordValid = await user.validatePassword(password);
 
     if (isPasswordValid) {
       const token = await user.getJWT();
-
-      res.cookie("token", token, {
-        expires: new Date(Date.now() + 8 * 3600000), // Set expiration time
-        httpOnly: true, // Make the cookie inaccessible to JavaScript
-        secure: true, // Send cookie over HTTPS only
-        sameSite: "None", // Allow cross-site requests
-      });
-
       const otp = generateOTP();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
       user.otp = otp;
       user.otpExpires = otpExpires;
-
       const updatedUser = await user.save();
 
-      await main(emailId, otp);
+      try {
+        await main(emailId, otp);
+      } catch (mailErr) {
+        console.error("⚠️ Nodemailer Email Failed:", mailErr.message);
+        console.log("🔑 [Fallback OTP]:", otp);
+      }
 
-      res.send({
-        message: "Email has been send on you email",
-        user: updatedUser,
+      res.cookie("token", token, COOKIE_OPTIONS);
+
+      res.status(200).json({
+        message: "OTP has been sent to your email",
+        data: updatedUser,
       });
     } else {
-      throw new Error("Invalid credentials");
+      return res.status(400).json({ error: "Invalid credentials" });
     }
   } catch (err) {
-    res.status(400).send("ERROR : " + err.message);
+    console.error("Login Error:", err.message);
+    res.status(400).json({ error: err.message || "Login failed" });
   }
 });
 
@@ -104,25 +114,29 @@ authRouter.post("/verify-otp", async (req, res) => {
   try {
     const { emailId, otp } = req.body;
 
-    // Find the user by email
+    if (!emailId || !otp) {
+      return res.status(400).json({ error: "Email and OTP are required." });
+    }
+
     const user = await User.findOne({ emailId });
 
     if (!user) {
       return res.status(400).json({ error: "User not found." });
     }
 
-    // Check if OTP is valid
     if (user.otp !== otp || user.otpExpires < Date.now()) {
       return res.status(400).json({ error: "Invalid or expired OTP." });
     }
 
-    // Update user verification status
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
 
-    res.json({ message: "Email verified successfully!" });
+    res.status(200).json({
+      message: "Email verified successfully!",
+      data: user,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -132,10 +146,10 @@ authRouter.post("/logout", async (req, res) => {
   res.cookie("token", null, {
     expires: new Date(Date.now()),
     httpOnly: true,
-    secure: true,
-    sameSite: "None", // Allow cross-site usage
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
   });
-  res.status(200).send("Logged out successfully");
+  res.status(200).json({ message: "Logged out successfully" });
 });
 
 module.exports = authRouter;
